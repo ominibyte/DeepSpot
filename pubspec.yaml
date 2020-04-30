@@ -1,0 +1,11 @@
+name: deepspot_manager
+description: Manager application to interface with all DeepSpot Clients
+
+environment:
+  sdk: '>=2.6.0 <3.0.0'
+
+dependencies:
+  dart_console: ^0.6.0
+  args: ^1.6.0
+  threading: ^0.0.10
+  csv: ^4.0.3
