@@ -1,0 +1,4 @@
+DeepSpot
+---------
+
+The AWS Spot Market allows users to bid for computing resources. These resources can be revoked as any time. Due to the uncertainty of the availability of these resources, the spot market prices can be cheaper than the on-demand prices by up to a factor of 10. DeepSpot is a service that allows Deep Learning tasks to be executed on spot instance resources thereby reducing the running costs while attempting to finish the job in a similar running time as an on-demand instance. We apply machine learning based on historical spot market prices to predict the best location for running the jobs. We also apply checkpointing as a reactive fault tolerance mechanism to limit the work lost.
