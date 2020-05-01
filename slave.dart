@@ -97,7 +97,7 @@ backupModel() async{
 }
 
 Future uploadToS3(String localFilePath, String appId, String s3Name){
-  return Process.run('aws', ['s3', 'cp', localFilePath, "s3://deepspot-app/$appId/$s3Name"]);
+  return Process.run('aws', ['s3', 'cp', localFilePath, "s3://comp598-deepspot/$appId/$s3Name"]);
 }
 
 void socketConnection() async{

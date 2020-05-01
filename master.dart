@@ -146,7 +146,7 @@ relaunchJob(id) async{
     printError(response["error"]);
 
     // delete the uploaded files from S3
-    Process.runSync('aws', ['s3', 'rm', "s3://deepspot-app/$id", '--recursive']);
+    Process.runSync('aws', ['s3', 'rm', "s3://comp598-deepspot/$id", '--recursive']);
     
     // remove the entry from the database
     Process.runSync('aws', ['dynamodb', 'put-item', '--table-name', 'jobs', '--key', 

@@ -55,6 +55,7 @@ final ami = {
   }
 };
 
+
 bool checkJobExists(String jobId){
   return getJobDetails(jobId) != null;
 }
@@ -199,20 +200,20 @@ Map<String, dynamic> requestSpotInstance(Map<String, dynamic> params){
   // Create launch specs using the ID passed in params.
   Map<String, dynamic> specs = {
     "ImageId": ami[params["os"]][params["region"]],
-    //"KeyName": "Default-Key-Pair",
-    //"SecurityGroupIds": ["sg-0c3c674870aedb77b"],
+    "KeyName": "Default-Key-Pair",
+    "SecurityGroupIds": ["sg-0caf14f9eccb80727"], //sg-0c3c674870aedb77b
     "InstanceType": params["instanceType"],
     "Placement": {
       "AvailabilityZone": params['availabilityZone']
     },
-    "NetworkInterfaces": [
-      {
-        "DeviceIndex": 0,
-        "AssociatePublicIpAddress": true
-      }
-    ],
+    // "NetworkInterfaces": [
+    //   {
+    //     "DeviceIndex": 0,
+    //     "AssociatePublicIpAddress": true
+    //   }
+    // ],
     "IamInstanceProfile": {
-      "Arn": "arn:aws:iam::975116542308:user/comp598"
+      "Arn": "arn:aws:iam::413168166423:user/deepspot"
     },
     "UserData": new File("unix-launch.sh").readAsStringSync().replaceAll("{JOBID}", params['id'])
   };

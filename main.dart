@@ -172,12 +172,12 @@ class MasterStartCommand extends Command{
   run(){
     // start
     ProcessResult result = Process.runSync('aws', ['ec2', 'run-instances', 
-      '--image-id', 'ami-078044add7f3bc223',
+      '--image-id', 'ami-054362537f5132ce2',// 'ami-078044add7f3bc223',
       '--count', '1', 
       '--instance-type', 'm5.large',
       //'--client-token', masterClientToken,
       '--key-name', 'Default-Key-Pair',
-      '--security-group-ids', 'sg-0c3c674870aedb77b',
+      '--security-group-ids', 'sg-0caf14f9eccb80727', // 'sg-0c3c674870aedb77b',
       //'--network-interfaces', 'AssociatePublicIpAddress=true,DeleteOnTermination=true,DeviceIndex=0',
       '--user-data', new File("master-launch.sh").readAsStringSync() //'file://master-launch.sh'
     ]);
@@ -553,7 +553,7 @@ class SubmitJobCommand extends Command{
     printError(response["error"]);
 
     // delete the uploaded files from S3
-    Process.runSync('aws', ['s3', 'rm', "s3://deepspot-app/$id", '--recursive']);
+    Process.runSync('aws', ['s3', 'rm', "s3://comp598-deepspot/$id", '--recursive']);
     
     // remove the entry from the database
     Process.runSync('aws', ['dynamodb', 'put-item', '--table-name', 'jobs', '--key', 
@@ -563,11 +563,11 @@ class SubmitJobCommand extends Command{
 } 
 
 Future uploadToS3(String localFilePath, String appId, String s3Name){
-  return Process.run('aws', ['s3', 'cp', localFilePath, "s3://deepspot-app/$appId/$s3Name"]);
+  return Process.run('aws', ['s3', 'cp', localFilePath, "s3://comp598-deepspot/$appId/$s3Name"]);
 }
 
 Future downloadModelFromS3(String appId){
-  return Process.run('aws', ['s3', 'cp', "s3://deepspot-app/$appId/model.h5", "$appId-model.h5"]);
+  return Process.run('aws', ['s3', 'cp', "s3://comp598-deepspot/$appId/model.h5", "$appId-model.h5"]);
 }
 
 printError(String message){
