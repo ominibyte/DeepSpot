@@ -22,7 +22,7 @@ main(){
     '--expression-attribute-values', '{":val":{"S":"$publicIP"}}'
   ]);
 
-  ServerSocket.bind(publicIP, PORT)
+  ServerSocket.bind('127.0.0.1', PORT)
   .then((serverSocket) {
     serverSocket.listen((socket) {
       socket.listen((raw){
