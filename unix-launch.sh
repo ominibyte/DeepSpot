@@ -7,8 +7,8 @@ source activate tensorflow_p36
 pip3 install awscli
 
 # Configure awscli
-aws configure set aws_access_key_id AKIAWAMV54YLRSI6OV5H
-aws configure set aws_secret_access_key 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
+aws configure set aws_access_key_id AKIA6GCLZUFSE22AFV66
+aws configure set aws_secret_access_key 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
 aws configure set default.region ca-central-1
 aws configure set default.output json
 
@@ -19,13 +19,13 @@ mkdir ~/deepspot
 cd ~/deepspot
 
 #TODO download the input, model and script
-aws s3 cp s3://comp598-deepspot/{JOBID} . --recursive
+aws s3 cp s3://deepspot-app/{JOBID} . --recursive
 
 # Download the slave script to the directory
-curl https://comp598-deepspot.s3.ca-central-1.amazonaws.com/slave.sh
+curl https://deepspot-app.s3.ca-central-1.amazonaws.com/slave.exe --output slave.exe
 
 # Make sure the file is executable
-chmod +x slave.sh
+chmod +x slave.exe
 
 # Run the startup script
-./slave.sh {JOBID}
+./slave.exe {JOBID}
