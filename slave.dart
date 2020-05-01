@@ -5,7 +5,7 @@ import 'dart:io';
 import 'util.dart';
 
 final PORT = 50356;
-var appId = "demo123";
+var appId = "testapp123";
 bool instanceTermination = false;
 bool jobCompleted = false;
 bool predictionTimeElapsed = false;
@@ -49,7 +49,9 @@ void main(List<String> args) async{
     process = pro;
   });
 
-  await Future.any(<Future>[instanceTerminationCheck(), jobCompletionCheck(), predictionTimeCompletionCheck(double.parse(map["interruptMinutes"]["S"]) * 60000)]).then((future) async{
+  await Future.any(<Future>[instanceTerminationCheck(), jobCompletionCheck(), 
+    predictionTimeCompletionCheck((double.parse(map["interruptMinutes"]["S"]) * 60000).toInt())]
+  ).then((future) async{
     quit = true;  // Stop sending heartbeat
 
     if( instanceTermination || predictionTimeElapsed ){
