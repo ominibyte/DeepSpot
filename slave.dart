@@ -40,12 +40,12 @@ void main(List<String> args) async{
     updateJobEntry(appId, "restarts", "${int.parse(map["restarts"]["S"]) + 1}");
 
   // Start the socket connection to the server
-  socketConnection();
+  await socketConnection();
 
   Process.start(python, ['script.py']).then((pro) {
     print("Started programm in separate process.");
-    // stdout.addStream(pro.stdout);
-    // stderr.addStream(pro.stderr);
+    stdout.addStream(pro.stdout);
+    stderr.addStream(pro.stderr);
     process = pro;
   });
 
@@ -74,9 +74,10 @@ void main(List<String> args) async{
       // inform master and save model to S3
       socket?.write(jsonEncode({"type": "completed", "appId": appId, "sir": jobDetails['sir']["S"]}));
     }
-  }).catchError((err){
-    print(err);
   });
+  // .catchError((err){
+  //   print(err);
+  // });
 }
 
 bool stopRunningScript(){
@@ -112,8 +113,12 @@ void socketConnection() async{
   Map map = jsonDecode(results.stdout);
   final obj = map["Items"][0];
   final serverIP = obj["value"]["S"];
+  print("Server IP: $serverIP");
 
   await Socket.connect(serverIP, PORT).then((s) => socket = s);
+
+  if( socket != null )
+    print("Connected to server");
   
   // Introduce self to server with appId
   socket?.writeln(jsonEncode({"type": "intro", "appId": appId}));
