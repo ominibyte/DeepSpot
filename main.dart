@@ -179,7 +179,7 @@ class MasterStartCommand extends Command{
       '--key-name', 'Default-Key-Pair',
       '--security-group-ids', 'sg-0caf14f9eccb80727', // 'sg-0c3c674870aedb77b',
       //'--network-interfaces', 'AssociatePublicIpAddress=true,DeleteOnTermination=true,DeviceIndex=0',
-      '--user-data', new File("master-launch.sh").readAsStringSync() //'file://master-launch.sh'
+      '--user-data',  'file://master-launch.sh' //new File("master-launch.sh").readAsStringSync()
     ]);
 
     if( result.stderr != null && result.stderr.toString().isNotEmpty )

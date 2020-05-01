@@ -10,7 +10,7 @@ Map<String, Socket> socketMap = {};
 final python = "python3.7";
 
 main(){
-  ProcessResult result = Process.runSync('curl', ['http://169.254.169.254/latest/meta-data/', 'public-ipv4']);
+  ProcessResult result = Process.runSync('curl', ['http://169.254.169.254/latest/meta-data/public-ipv4']);
   print("Public IP: " + result.stdout);
 
   final publicIP = result.stdout;
