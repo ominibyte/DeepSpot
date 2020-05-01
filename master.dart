@@ -28,35 +28,40 @@ main(){
       print("Connected to ${socket.remoteAddress.rawAddress}");
 
       socket.listen((raw){
-        Map dataMap = jsonDecode(utf8.decode(raw));
-        
-        switch(dataMap["type"]){
-          case "intro": socketMap[dataMap["appId"]] = socket; 
-            print("Handshake received: " + dataMap["appId"]);
-            break;
-          case "terminated": // This is is in response to a command from the master to terminate
-            // Terminate the spot instance
-            cancelAndTerminateSpotInstance(dataMap["sir"]);
-            print("Terminated: " + dataMap["appId"]);
-            break;
-          case "completed": 
-            // Terminate the spot instance
-            cancelAndTerminateSpotInstance(dataMap["sir"]);
-            print("Completed: " + dataMap["appId"]);
-            break;
-          case "time":
-            // Terminate the spot instance
-            cancelAndTerminateSpotInstance(dataMap["sir"]);
-            print("Time Elapsed: " + dataMap["appId"]);
-            relaunchJob(dataMap["appId"]);
-            break;
-          case "instance-termination": 
-            // Terminate the spot instance
-            cancelAndTerminateSpotInstance(dataMap["sir"]);
-            print("Instance Recalled: " + dataMap["appId"]);
-            relaunchJob(dataMap["appId"]);
-            break;
-          case "test": print(dataMap["payload"]); break;
+        try{
+          Map dataMap = jsonDecode(utf8.decode(raw));
+          
+          switch(dataMap["type"]){
+            case "intro": socketMap[dataMap["appId"]] = socket; 
+              print("Handshake received: " + dataMap["appId"]);
+              break;
+            case "terminated": // This is is in response to a command from the master to terminate
+              // Terminate the spot instance
+              cancelAndTerminateSpotInstance(dataMap["sir"]);
+              print("Terminated: " + dataMap["appId"]);
+              break;
+            case "completed": 
+              // Terminate the spot instance
+              cancelAndTerminateSpotInstance(dataMap["sir"]);
+              print("Completed: " + dataMap["appId"]);
+              break;
+            case "time":
+              // Terminate the spot instance
+              cancelAndTerminateSpotInstance(dataMap["sir"]);
+              print("Time Elapsed: " + dataMap["appId"]);
+              relaunchJob(dataMap["appId"]);
+              break;
+            case "instance-termination": 
+              // Terminate the spot instance
+              cancelAndTerminateSpotInstance(dataMap["sir"]);
+              print("Instance Recalled: " + dataMap["appId"]);
+              relaunchJob(dataMap["appId"]);
+              break;
+            case "test": print(dataMap["payload"]); break;
+          }
+        }
+        catch(e){
+          print("Error: $e");
         }
       });
     });
