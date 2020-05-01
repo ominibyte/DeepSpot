@@ -215,7 +215,7 @@ Map<String, dynamic> requestSpotInstance(Map<String, dynamic> params){
     "IamInstanceProfile": {
       "Arn": "arn:aws:iam::413168166423:user/deepspot"
     },
-    "UserData": new File("unix-launch.sh").readAsStringSync().replaceAll("{JOBID}", params['id'])
+    "UserData": base64Encode(utf8.encode(new File("unix-launch.sh").readAsStringSync().replaceAll("{JOBID}", params['id'])))
   };
 
   // Write specs to file
@@ -223,7 +223,7 @@ Map<String, dynamic> requestSpotInstance(Map<String, dynamic> params){
   jsonFile.writeAsStringSync(jsonEncode(specs));
 
   ProcessResult result = Process.runSync('aws', ['ec2', 'request-spot-instances',
-    '--spot-price', params['price'],
+    '--spot-price', params['price'].toString(),
     '--client-token', params['id'],
     '--availability-zone-group', params['availabilityZone'],
     '--launch-specification', "file://${params['id']}.json",
@@ -260,26 +260,29 @@ Map<String, dynamic> findOptimalInstance(List modelResponse, Map currentSpotPric
     if( !pricing.containsKey(key) )
       return false;
 
-    var time = 0;
+    var time = 0.0;
     Map r = item['R'];
-    var spotPrice = currentSpotPrices[key]["SpotPrice"];
-    var onDemandPrice = pricing[key]["PricePerUnit"];
-
+    var spotPrice = double.parse(currentSpotPrices[key]["SpotPrice"].toString());
+    var onDemandPrice = double.parse(pricing[key]["PricePerUnit"].toString());
+    
     for( String key in r.keys ){
-      if( r[key] == null || r[key] <= 0 || time > r[key] 
-        || int.parse(key.split("_")[1]) * spotPrice > onDemandPrice ) // If the increase in the current spot price will exceed the on demand price
+      var t = double.parse(r[key].toString());
+      if( r[key] == null || t <= 0 || time > t 
+        || double.parse(key.split("_")[1]) * spotPrice > onDemandPrice ) // If the increase in the current spot price will exceed the on demand price
         break;
 
-      time = r[key];
+      time = t;
     }
 
     // Check if we can squeeze 30 minutes or more before the spot instance price reaches the ondemand price
-    if( time > 30 ){
-      item['time'] = time;
+    if( time * 60 > 30 ){ // Time is in hours so convert to minutes
+      item['time'] = (time * 60).toInt(); // Convert to minutes
       item['price'] = onDemandPrice;
       return true;
     }
+    else
+      print(time);
 
     return false;
-  });
+  }, orElse: () => null);
 }

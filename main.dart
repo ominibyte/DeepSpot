@@ -4,7 +4,6 @@ import 'package:args/command_runner.dart';
 import 'package:dart_console/dart_console.dart';
 import 'dart:io';
 import 'package:args/args.dart';
-import 'package:csv/csv.dart';
 
 import 'table.dart';
 import 'util.dart';
@@ -18,18 +17,20 @@ final python = "/Users/richboy/opt/anaconda3/bin/python3";
 
 void main(List<String> arguments) async{
   //printJobs(getJobs(JobStatus.ALL));
-  if( arguments.isEmpty || (arguments.length == 1 && arguments[0] == "dspot") ){  // Interactive mode
-    runner.addCommand(JobsCommand());
-    runner.addCommand(JobCommand());
-    runner.addCommand(MasterCommand());
+  // if( arguments.isEmpty || (arguments.length == 1 && arguments[0] == "dspot") ){  // Interactive mode
+  //   runner.addCommand(JobsCommand());
+  //   runner.addCommand(JobCommand());
+  //   runner.addCommand(MasterCommand());
 
-    isInteractiveMode = true;
-    interactiveMode();
-  }
-  else{ // Non-interactive mode
-    runner.addCommand(NonInteractiveModeCommand());
-    runCommand(arguments);
-  }
+  //   isInteractiveMode = true;
+  //   interactiveMode();
+  // }
+  // else{ // Non-interactive mode
+  //   runner.addCommand(NonInteractiveModeCommand());
+  //   runCommand(arguments);
+  // }
+
+  await submitJob("testapp123", "TestApp", "script.py", "test1/data.npz", "test1/model.h5");
 
 
   // final client = HttpClient();
@@ -71,7 +72,7 @@ void interactiveMode(){
 }
 
 void returnOutput(String output){
-  console.writeLine(output);
+  print(output);
 }
 
 Map getJobs(JobStatus status){
@@ -98,7 +99,7 @@ void printJobs(Map map){
 
   if( list.isEmpty ){
     console.setForegroundColor(ConsoleColor.yellow);
-    console.writeLine("No job found for criteria.");
+    printOutput("No job found for criteria.");
     return;
   }
 
@@ -186,8 +187,8 @@ class MasterStartCommand extends Command{
       printError(result.stderr);
     else{
       console.setForegroundColor(ConsoleColor.green);
-      console.writeLine("Master instance is initializing.");
-      console.writeLine();
+      printOutput("Master instance is initializing.");
+      printOutput("");
     }
   }
 }
@@ -213,8 +214,8 @@ class MasterStopCommand extends Command{
     Process.runSync('aws', ['ec2', 'terminate-instances', '--instance-ids', ...instanceIds]);
     
     console.setForegroundColor(ConsoleColor.green);
-    console.writeLine("All master instances stopped.");
-    console.writeLine();
+    printOutput("All master instances stopped.");
+    printOutput("");
   }
 }
 
@@ -236,7 +237,7 @@ class JobCommand extends Command{
 
     if( argResults.rest.isEmpty ){
       console.setForegroundColor(ConsoleColor.red);
-      console.writeLine("Format: job " + (isGetModel ? "--get-model " : 
+      printOutput("Format: job " + (isGetModel ? "--get-model " : 
         (isCancel ? "--cancel " : "")) + "<job-id>"); 
 
       return;
@@ -344,7 +345,7 @@ class ListStatusJobsCommand extends Command{
       case "all": status = JobStatus.ALL; break;
       default: 
         console.setForegroundColor(ConsoleColor.red);
-        console.writeLine("Invalid Job Status: " + argResults["status"]); 
+        printOutput("Invalid Job Status: " + argResults["status"]); 
         return;
     }
 
@@ -374,8 +375,10 @@ class ListAllJobsCommand extends Command{
       // ];
       printJobs(map);
     }
-    else
+    else{
+      //TODO transform data for proper output from Dynamo JSON to regular JSON
       returnOutput(map["Items"].toString());
+    }
   }
 } 
 
@@ -415,9 +418,15 @@ class SubmitJobCommand extends Command{
 
   void printError(String message){
     console.setForegroundColor(ConsoleColor.red);
-    console.writeLine(message);
+    if( isInteractiveMode )
+      console.writeLine(message);
+    else
+      printOutput(message);
     console.setForegroundColor(ConsoleColor.white);
-    console.writeLine();
+    if( isInteractiveMode )
+      console.writeLine();
+    else
+      printOutput("");
 
     this.printUsage();
   }
@@ -444,121 +453,7 @@ class SubmitJobCommand extends Command{
     String inputFile = argResults['input'];
     String model = argResults['model'];
 
-    // check if the files exists
-    if( FileSystemEntity.typeSync(script) == FileSystemEntityType.notFound ){
-      printError("The specified file in 'script' does not exist.");
-      return;
-    }
-    if( FileSystemEntity.typeSync(inputFile) == FileSystemEntityType.notFound ){
-      printError("The specified file in 'input' does not exist.");
-      return;
-    }
-    if( FileSystemEntity.typeSync(model) == FileSystemEntityType.notFound ){
-      printError("The specified file in 'model' does not exist.");
-      return;
-    }
-
-    // Get the last 7 days price
-    final now = DateTime.now().toUtc();
-    Future<List> spotPricesFuture = getSpotPrices(now.subtract(Duration(days: 7)), now);
-
-    // Get the current on demand prices
-    final loadFuture = loadOnDemandPricing();
-
-    // Save the data to json file.
-    List spotPrices = await spotPricesFuture;
-    // Delete the input and output files
-    File jsonFile = new File("sample.json");
-    if( jsonFile.existsSync() )
-      jsonFile.deleteSync();
-    jsonFile = new File("expectTime.json");
-    if( jsonFile.existsSync() )
-      jsonFile.deleteSync();
-    
-    // Write the input file data
-    jsonFile.writeAsStringSync(jsonEncode(spotPrices));
-
-    //print(jsonFile.absolute);
-
-    // Ask the model to predict
-    ProcessResult result = Process.runSync(python, ["predict.py", jsonFile.absolute.toString()]);
-    if( result.stderr != null && result.stderr.toString().isNotEmpty ){
-      printError(result.stderr);
-      return;
-    }
-
-    File responseFile = new File("expectTime.json");  // Read the out file data from the prediction script
-    if( !responseFile.existsSync() ){
-      printError("Unable to find the predicted response file: " + result.stdout);
-      return;
-    }
-
-    List modelResponseList = jsonDecode(responseFile.readAsStringSync());
-
-    await loadFuture; // ensure that the pricing CSV is loaded
-
-    // Determine the specs and OS which will be used for hosting the app
-    Map<String, dynamic> instanceMap = findOptimalInstance(modelResponseList, getCurrentSpotPrices(spotPrices));
-    //os, region, instanceType, availabilityZone, id, price
-    final instance = {
-      "os": "amazon-linux-2", //TODO randomly choose OS. For now lets just use amazon-linux which comes with awscli
-      "region": instanceMap["AvailabilityZone"].toString().substring(0, instanceMap["AvailabilityZone"].toString().length - 1),
-      "instanceType": instanceMap["InstanceType"],
-      "availabilityZone": instanceMap["AvailabilityZone"],
-      "price": instanceMap["price"],
-      "id": id,
-      "time": instanceMap["time"],
-    };
-
-    // Upload the model, script and input to S3
-    await Future.wait([
-      uploadToS3(model, id, "model.h5"),
-      uploadToS3(inputFile, id, "data.npz"),
-      uploadToS3(script, id, "script.py"),
-    ]);
-
-    final interruptTime = DateTime.now().add(Duration(minutes: int.parse(instance['time'].toString()))).toUtc().toIso8601String();
-
-    // save entry to database
-    Process.runSync('aws', ['dynamodb', 'put-item', '--table-name', 'jobs', '--item', 
-      '{"id": {"S":"$id"}, "name": {"S":"$jobName"}, "instance": {"S":"${instance['instanceType']}"},' 
-      '"location":{"S":"${instance['region']}"}, "repl":{"N":"1"}, '
-      '"startTime":{"S":"${DateTime.now().toUtc().toIso8601String()}"}, "status":{"S":"INITIALIZING"},'
-      '"estimatedInterrupt":{"S":"$interruptTime"}, "restarts": {"S":"0"}, "operatingSystem":{"S":"${instance['os']}"},'
-      '"bidPrice":{"S":"${instance['price']}"}, "interruptMinutes":{"S":"${instance['time']}"},'
-      '"spotPrice":{"S":"${instanceMap['SpotPrice']}"}, "checkpoint": {"S":""}, "sir":{"S":""}}'
-    ]); // checkpoint here is the time of the last checkpoint. sir is the Spot instance request ID
-
-    Map<String, dynamic> response = requestSpotInstance(instance);
-    
-    if( response["status"] ){  
-      print("Job submitted!!!");
-      print(response);
-
-
-      // check if the spot instance was reserved
-      String state = response["payload"]["SpotInstanceRequests"][0]["State"];
-      String sir = response["payload"]["SpotInstanceRequests"][0]["SpotInstanceRequestId"];
-      if( state == "open" || state == "active" ){
-        // Update the job database entry with the Spot Instance Request ID
-        Process.runSync('aws', ['dynamodb', 'update-item', '--table-name', 'jobs', '--key', 
-          '{"id": {"S":"$id"}}', '--update-expression', 'SET sir = :val',
-          '--expression-attribute-values', '{":val":{"S":"$sir"}}'
-        ]);
-
-        return;
-      }
-    }
-
-    printError(response["error"]);
-
-    // delete the uploaded files from S3
-    Process.runSync('aws', ['s3', 'rm', "s3://comp598-deepspot/$id", '--recursive']);
-    
-    // remove the entry from the database
-    Process.runSync('aws', ['dynamodb', 'put-item', '--table-name', 'jobs', '--key', 
-      '{"id": {"S":"$id"}}'
-    ]);
+    await submitJob(id, jobName, script, inputFile, model);
   }
 } 
 
@@ -571,6 +466,146 @@ Future downloadModelFromS3(String appId){
 }
 
 printError(String message){
-  console.setForegroundColor(ConsoleColor.red);
-  console.writeErrorLine(message);
+  if( isInteractiveMode ){
+    console.setForegroundColor(ConsoleColor.red);
+    console.writeErrorLine(message);
+  }
+  else
+    print(message);
+}
+
+printOutput(String message){
+  if( isInteractiveMode )
+    console.writeLine(message);
+  else
+    print(message);
+}
+
+submitJob(id, jobName, script, inputFile, model) async{
+  // check if the files exists
+  if( FileSystemEntity.typeSync(script) == FileSystemEntityType.notFound ){
+    printError("The specified file in 'script' does not exist.");
+    return;
+  }
+  if( FileSystemEntity.typeSync(inputFile) == FileSystemEntityType.notFound ){
+    printError("The specified file in 'input' does not exist.");
+    return;
+  }
+  if( FileSystemEntity.typeSync(model) == FileSystemEntityType.notFound ){
+    printError("The specified file in 'model' does not exist.");
+    return;
+  }
+
+  // Get the last 7 days price
+  final now = DateTime.now().toUtc();
+  Future<List> spotPricesFuture = getSpotPrices(now.subtract(Duration(days: 7)), now);
+
+  // Get the current on demand prices
+  final loadFuture = loadOnDemandPricing();
+
+  // Save the data to json file.
+  List spotPrices = await spotPricesFuture;
+  // Delete the input and output files
+  File jsonFile = new File("sample.json");
+  if( jsonFile.existsSync() )
+    jsonFile.deleteSync();
+  jsonFile = new File("expectTime.json");
+  if( jsonFile.existsSync() )
+    jsonFile.deleteSync();
+  
+  jsonFile = new File("sample.json");
+  // Write the input file data
+  jsonFile.writeAsStringSync(jsonEncode(spotPrices));
+
+  //print(jsonFile.absolute);
+
+  // Ask the model to predict
+  ProcessResult result = Process.runSync(python, ["predict.py", jsonFile.absolute.toString()]);
+  if( result.stderr != null && result.stderr.toString().isNotEmpty ){
+    printError(result.stderr);
+    return;
+  }
+
+  File responseFile = new File("expectTime.json");  // Read the out file data from the prediction script
+  if( !responseFile.existsSync() ){
+    printError("Unable to find the predicted response file: " + result.stdout);
+    return;
+  }
+
+  List modelResponseList = jsonDecode(responseFile.readAsStringSync());
+
+  await loadFuture; // ensure that the pricing CSV is loaded
+
+  // Determine the specs and OS which will be used for hosting the app
+  Map<String, dynamic> instanceMap = findOptimalInstance(modelResponseList, getCurrentSpotPrices(spotPrices));
+  
+  if( instanceMap == null ){
+    printError("Sorry, unable to find a spot instance to service your request at this moment.");
+    return;
+  }
+  
+  //os, region, instanceType, availabilityZone, id, price
+  final instance = {
+    "os": "amazon-linux-2", //TODO randomly choose OS. For now lets just use amazon-linux which comes with awscli
+    "region": instanceMap["AvailabilityZone"].toString().substring(0, instanceMap["AvailabilityZone"].toString().length - 1),
+    "instanceType": instanceMap["InstanceType"],
+    "availabilityZone": instanceMap["AvailabilityZone"],
+    "price": instanceMap["price"],
+    "id": id,
+    "time": instanceMap["time"],
+  };
+
+  // Upload the model, script and input to S3
+  await Future.wait([
+    uploadToS3(model, id, "model.h5"),
+    uploadToS3(inputFile, id, "data.npz"),
+    uploadToS3(script, id, "script.py"),
+  ]);
+
+  final interruptTime = DateTime.now().add(Duration(minutes: int.parse(instance['time'].toString()))).toUtc().toIso8601String();
+
+  // save entry to database
+  result = Process.runSync('aws', ['dynamodb', 'put-item', '--table-name', 'jobs', '--item', 
+    '{"id": {"S":"$id"}, "name": {"S":"$jobName"}, "instance": {"S":"${instance['instanceType']}"},' 
+    '"location":{"S":"${instance['region']}"}, "repl":{"N":"1"}, '
+    '"startTime":{"S":"${DateTime.now().toUtc().toIso8601String()}"}, "status":{"S":"INITIALIZING"},'
+    '"estimatedInterrupt":{"S":"$interruptTime"}, "restarts": {"S":"0"}, "operatingSystem":{"S":"${instance['os']}"},'
+    '"bidPrice":{"S":"${instance['price']}"}, "interruptMinutes":{"S":"${instance['time']}"},'
+    '"spotPrice":{"S":"${instanceMap['SpotPrice']}"}, "checkpoint": {"S":"NULL"}}'
+  ]); // checkpoint here is the time of the last checkpoint. sir is the Spot instance request ID
+  if( result.stderr != null && result.stderr.toString().isNotEmpty ){
+    printError("${result.stderr}");
+    return;
+  }
+
+  Map<String, dynamic> response = requestSpotInstance(instance);
+  
+  if( response["status"] ){  
+    print("Job submitted!!!");
+    print(response);
+
+
+    // check if the spot instance was reserved
+    String state = response["payload"]["SpotInstanceRequests"][0]["State"];
+    String sir = response["payload"]["SpotInstanceRequests"][0]["SpotInstanceRequestId"];
+    if( state == "open" || state == "active" ){
+      // Update the job database entry with the Spot Instance Request ID
+      Process.runSync('aws', ['dynamodb', 'update-item', '--table-name', 'jobs', '--key', 
+        '{"id": {"S":"$id"}}', '--update-expression', 'SET sir = :val',
+        '--expression-attribute-values', '{":val":{"S":"$sir"}}'
+      ]);
+
+      return;
+    }
+  }
+
+  printError(response["error"]);
+
+  // delete the uploaded files from S3
+  Process.runSync('aws', ['s3', 'rm', "s3://comp598-deepspot/$id", '--recursive']);
+  
+  // remove the entry from the database
+  Process.runSync('aws', ['dynamodb', 'put-item', '--table-name', 'jobs', '--key', 
+    '{"id": {"S":"$id"}}'
+  ]);
 }

@@ -25,6 +25,8 @@ main(){
   ServerSocket.bind('127.0.0.1', PORT)
   .then((serverSocket) {
     serverSocket.listen((socket) {
+      print("Connected to ${socket.remoteAddress.rawAddress}");
+
       socket.listen((raw){
         Map dataMap = jsonDecode(utf8.decode(raw));
         
@@ -79,6 +81,8 @@ relaunchJob(id) async{
     jsonFile = new File("expectTime.json");
     if( jsonFile.existsSync() )
       jsonFile.deleteSync();
+
+    jsonFile = new File("sample.json");
     
     // Write the input file data
     jsonFile.writeAsStringSync(jsonEncode(spotPrices));
@@ -102,6 +106,12 @@ relaunchJob(id) async{
 
     // Determine the specs and OS which will be used for hosting the app
     Map<String, dynamic> instanceMap = findOptimalInstance(modelResponseList, getCurrentSpotPrices(spotPrices));
+    
+    if( instanceMap == null ){
+      printError("Sorry, unable to find a spot instance to service this request at this moment.");
+      return;
+    }
+    
     //os, region, instanceType, availabilityZone, id, price
     final instance = {
       "os": "amazon-linux-2", //TODO randomly choose OS. For now lets just use amazon-linux which comes with awscli

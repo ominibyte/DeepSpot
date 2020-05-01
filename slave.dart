@@ -35,7 +35,7 @@ void main(List<String> args) async{
   updateJobEntry(appId, "status", "RUNNING");
 
   // if this is not the first run, increment the restarts count in the database
-  if( map["checkpoint"]["S"] != "" )
+  if( map["checkpoint"]["S"] != "NULL" )
     updateJobEntry(appId, "restarts", "${int.parse(map["restarts"]["S"]) + 1}");
 
   // Start the socket connection to the server
