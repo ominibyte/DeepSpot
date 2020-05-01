@@ -13,6 +13,7 @@ Socket socket;
 Process process;
 bool quit = false;
 Map jobDetails;
+final python = "python";
 
 void main(List<String> args) async{
   // Retrieve the Application ID
@@ -41,13 +42,14 @@ void main(List<String> args) async{
   // Start the socket connection to the server
   socketConnection();
 
-  Process.start('python', ['-i', 'main', 'test.dart']).then((pro) {
+  Process.start(python, ['script.py']).then((pro) {
+    print("Started programm in separate process.");
     // stdout.addStream(pro.stdout);
     // stderr.addStream(pro.stderr);
     process = pro;
   });
 
-  Future.any(<Future>[instanceTerminationCheck(), jobCompletionCheck(), predictionTimeCompletionCheck(double.parse(map["interruptMinutes"]["S"]) * 60000)]).then((future) async{
+  await Future.any(<Future>[instanceTerminationCheck(), jobCompletionCheck(), predictionTimeCompletionCheck(double.parse(map["interruptMinutes"]["S"]) * 60000)]).then((future) async{
     quit = true;  // Stop sending heartbeat
 
     if( instanceTermination || predictionTimeElapsed ){
