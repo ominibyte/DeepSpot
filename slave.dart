@@ -86,6 +86,8 @@ bool stopRunningScript(){
   if( process != null )
     return process.kill();
 
+  print("Stopped running script.");
+
   return false;
 }
 
@@ -131,16 +133,23 @@ void socketConnection() async{
   test();
 
   socket?.listen((raw){
-    final map = jsonDecode(utf8.decode(raw));
+    try{
+      final map = jsonDecode(utf8.decode(raw));
 
-    if( map["type"] == "action" && map["action"] == "terminate" ){
-      // Stop script if it still running
-      stopRunningScript();
+      if( map["type"] == "action" && map["action"] == "terminate" ){
+        print("Terminate request received!");
+        
+        // Stop script if it still running
+        stopRunningScript();
 
-      // Backup model
-      backupModel();
+        // Backup model
+        backupModel();
 
-      socket?.writeln(jsonEncode({"type": "terminated", "appId": appId}));
+        socket?.writeln(jsonEncode({"type": "terminated", "appId": appId}));
+      }
+    }
+    catch(e){
+      //ignore
     }
   });
 }

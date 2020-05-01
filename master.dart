@@ -57,11 +57,16 @@ main(){
               print("Instance Recalled: " + dataMap["appId"]);
               relaunchJob(dataMap["appId"]);
               break;
+            case "terminate-request": 
+              //find socket
+              Socket s = socketMap[dataMap["appId"]];
+              s?.writeln(jsonEncode({"type": "action", "action": "terminate"}));
+              break;
             case "test": print(dataMap["payload"]); break;
           }
         }
         catch(e){
-          print("Error: $e");
+          //print("Error: $e");
         }
       });
     });
