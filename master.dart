@@ -22,7 +22,7 @@ main(){
     '--expression-attribute-values', '{":val":{"S":"$publicIP"}}'
   ]);
 
-  ServerSocket.bind('127.0.0.1', PORT)
+  ServerSocket.bind(InternetAddress.anyIPv4, PORT)
   .then((serverSocket) {
     serverSocket.listen((socket) {
       print("Connected to ${socket.remoteAddress.rawAddress}");
