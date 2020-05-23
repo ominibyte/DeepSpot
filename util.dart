@@ -201,20 +201,20 @@ Map<String, dynamic> requestSpotInstance(Map<String, dynamic> params){
   Map<String, dynamic> specs = {
     "ImageId": ami[params["os"]][params["region"]],
     "KeyName": "Default-Key-Pair",
-    "SecurityGroupIds": ["sg-0caf14f9eccb80727"], //sg-0c3c674870aedb77b
+    //"SecurityGroupIds": ["sg-0caf14f9eccb80727"], //sg-0c3c674870aedb77b
     "InstanceType": params["instanceType"],
     "Placement": {
       "AvailabilityZone": params['availabilityZone']
     },
-    // "NetworkInterfaces": [
-    //   {
-    //     "DeviceIndex": 0,
-    //     "AssociatePublicIpAddress": true
-    //   }
-    // ],
-    "IamInstanceProfile": {
-      "Arn": "arn:aws:iam::413168166423:user/deepspot"
-    },
+    "NetworkInterfaces": [
+      {
+        "DeviceIndex": 0,
+        "AssociatePublicIpAddress": true
+      }
+    ],
+    // "IamInstanceProfile": {
+    //   "Arn": "arn:aws:iam::413168166423:user/deepspot"
+    // },
     "UserData": base64Encode(utf8.encode(new File("unix-launch.sh").readAsStringSync().replaceAll("{JOBID}", params['id'])))
   };
 
@@ -223,9 +223,10 @@ Map<String, dynamic> requestSpotInstance(Map<String, dynamic> params){
   jsonFile.writeAsStringSync(jsonEncode(specs));
 
   ProcessResult result = Process.runSync('aws', ['ec2', 'request-spot-instances',
+    '--region', params["region"],
     '--spot-price', params['price'].toString(),
     '--client-token', params['id'],
-    '--availability-zone-group', params['availabilityZone'],
+    //'--availability-zone-group', params['availabilityZone'],
     '--launch-specification', "file://${params['id']}.json",
   ]);
 
@@ -278,6 +279,8 @@ Map<String, dynamic> findOptimalInstance(List modelResponse, Map currentSpotPric
     if( time * 60 > 30 ){ // Time is in hours so convert to minutes
       item['time'] = (time * 60).toInt(); // Convert to minutes
       item['price'] = onDemandPrice;
+
+      print("${item['AvailabilityZone']}, ${item['time']}, ${item['InstanceType']}");
       return true;
     }
     else

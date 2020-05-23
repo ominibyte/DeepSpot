@@ -1,9 +1,9 @@
 from __future__ import print_function
 import pandas as pd
 import numpy as np
-from tqdm import tqdm
-print("DATA PREPROCESSING...")
-import pickle
+# from tqdm import tqdm
+# print("DATA PREPROCESSING...")
+# import pickle
 
 #  libaray Loading and setting for multi-processing
 
@@ -15,7 +15,7 @@ from sklearn.utils.class_weight import compute_class_weight
 from scipy.stats import randint, expon, uniform
 from sklearn.model_selection import RandomizedSearchCV
 import xgboost
-
+import json
 import datetime
 import time
 import os
@@ -26,7 +26,7 @@ import time
 import re
 import shutil
 from datetime import datetime
-import socket
+# import socket
 import pickle
 from multiprocessing import Process
 import math
@@ -34,33 +34,13 @@ import warnings
 from itertools import combinations
 import gc
 
-# SELECT = 'discrete1/SelectedPatientConditionsL.xlsx'
-if socket.gethostbyname(socket.gethostname()) == '169.48.97.149':
-    SERVER = 1
-elif socket.gethostbyname(socket.gethostname()) == '169.48.97.152':
-    SERVER = 2
-elif socket.gethostbyname(socket.gethostname()) == '169.61.92.249':
-    SERVER = 3
-elif socket.gethostbyname(socket.gethostname()) == '169.61.92.251':
-    SERVER = 4
-elif socket.gethostbyname(socket.gethostname()) == '132.206.55.112':
-    SERVER = 5
 
 
 
 
 
 # MULTIPROCESSING CONTROL
-
-# deicide number of workers to be used for multiprocessing
-if SERVER == 3:
-    WORKERS = 94
-elif SERVER == 0:
-    WORKERS = 4
-elif SERVER == 5:
-    WORKERS = 30
-else:
-    WORKERS = -1
+WORKERS = -1
 
 
 # Helper function for apply_by_multiprocessing
@@ -105,7 +85,7 @@ def inputConverter(dataS, featureLimit = 7):
     D['ProductDescription'] = dataS['ProductDescription'].iloc[0]
     return D
 
-def firstLevel(s,limitHeader,R):
+def firstLevel(s,limitHeader,RR):
     allRegion = s['AvailabilityZone'].unique()
     allOS = s['ProductDescription'].unique()
     allInstance = s['InstanceType'].unique()
@@ -139,9 +119,9 @@ def firstLevel(s,limitHeader,R):
                         FLAG.append(1)
                         r = {}
                         for lH in limitHeader:
-                            pR = MODELS[lH].predict(D[D[lH] > -1][featureHeader].iloc[0:1])
+                            pR = RR[(RR['level_1'] == os)&(RR['level_0'] == re)&(RR['level_2'] == ins)][lH]
                             if len(pR) > 0:
-                                r[lH] = str(pR[0])
+                                r[lH] = str(pR.iloc[0])
                             else:
                                 r[lH] = str(-1)
                                 
@@ -163,6 +143,9 @@ with open('MODELS.p', 'rb') as fp:
 R = {}
 for lH in labelHeader:
     R[lH] = list(MODELS[lH].predict(sD[featureHeader]))
-r = firstLevel(s,labelHeader,pd.DataFrame(R))
+RR = pd.DataFrame(R)
+RR.index = sD.index
+RR = RR.reset_index()
+r = firstLevel(s,labelHeader,RR)
 
 r.to_json(r'expectTime.json',orient='records')

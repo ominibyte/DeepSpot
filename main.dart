@@ -17,20 +17,20 @@ final python = "/Users/richboy/opt/anaconda3/bin/python3";
 
 void main(List<String> arguments) async{
   //printJobs(getJobs(JobStatus.ALL));
-  // if( arguments.isEmpty || (arguments.length == 1 && arguments[0] == "dspot") ){  // Interactive mode
-  //   runner.addCommand(JobsCommand());
-  //   runner.addCommand(JobCommand());
-  //   runner.addCommand(MasterCommand());
+  if( arguments.isEmpty || (arguments.length == 1 && arguments[0] == "dspot") ){  // Interactive mode
+    runner.addCommand(JobsCommand());
+    runner.addCommand(JobCommand());
+    runner.addCommand(MasterCommand());
 
-  //   isInteractiveMode = true;
-  //   interactiveMode();
-  // }
-  // else{ // Non-interactive mode
-  //   runner.addCommand(NonInteractiveModeCommand());
-  //   runCommand(arguments);
-  // }
+    isInteractiveMode = true;
+    interactiveMode();
+  }
+  else{ // Non-interactive mode
+    runner.addCommand(NonInteractiveModeCommand());
+    runCommand(arguments);
+  }
 
-  await submitJob("testapp123", "TestApp", "script.py", "test1/data.npz", "test1/model.h5");
+  //await submitJob("testapp123", "TestApp", "script.py", "test1/data.npz", "test1/model.h5");
 
 
   // final client = HttpClient();
@@ -287,6 +287,7 @@ class JobCommand extends Command{
       terminateInstance(instanceId);
 
       print("Job $jobId has been cancelled.");
+      //terminateJob();
     }
     else{
       // show the details of the job
@@ -376,8 +377,17 @@ class ListAllJobsCommand extends Command{
       printJobs(map);
     }
     else{
-      //TODO transform data for proper output from Dynamo JSON to regular JSON
-      returnOutput(map["Items"].toString());
+      // transform data for proper output from Dynamo JSON to regular JSON
+      List<Map<String, dynamic>> newList = [];
+      for( Map item in map["Items"] ){
+        Map<String, dynamic> newItem = {};
+        for(String key in item.keys){
+          newItem[key] = item[key].containsKey("S") ? item[key]["S"] : item[key]["N"];
+        }
+
+        newList.add(newItem);
+      }
+      returnOutput(jsonEncode(newList));
     }
   }
 } 
@@ -573,6 +583,7 @@ submitJob(id, jobName, script, inputFile, model) async{
     '"bidPrice":{"S":"${instance['price']}"}, "interruptMinutes":{"S":"${instance['time']}"},'
     '"spotPrice":{"S":"${instanceMap['SpotPrice']}"}, "checkpoint": {"S":"NULL"}}'
   ]); // checkpoint here is the time of the last checkpoint. sir is the Spot instance request ID
+
   if( result.stderr != null && result.stderr.toString().isNotEmpty ){
     printError("${result.stderr}");
     return;
@@ -608,4 +619,19 @@ submitJob(id, jobName, script, inputFile, model) async{
   Process.runSync('aws', ['dynamodb', 'put-item', '--table-name', 'jobs', '--key', 
     '{"id": {"S":"$id"}}'
   ]);
+}
+
+Socket socket;
+final PORT = 50356;
+var appId = "testapp123";
+var serverIP = "35.182.202.42";
+
+terminateJob() async{
+  await Socket.connect(serverIP, PORT).then((s) => socket = s);
+
+  if( socket != null )
+    print("Connected to server");
+  
+
+  socket?.writeln(jsonEncode({"type": "terminate-request", "appId": appId}));
 }
